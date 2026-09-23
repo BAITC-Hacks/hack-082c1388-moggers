@@ -21,6 +21,12 @@ from moneygraph.agent import Assistant  # noqa: E402
 from moneygraph.pipeline import run  # noqa: E402
 
 
+@pytest.fixture(autouse=True)
+def offline_api(monkeypatch):
+    # Installing a real key must not turn regression tests into paid API requests.
+    monkeypatch.setattr(serve_mod.llm, "available", lambda: False)
+
+
 def _free_port() -> int:
     with socket.socket() as s:
         s.bind(("127.0.0.1", 0))

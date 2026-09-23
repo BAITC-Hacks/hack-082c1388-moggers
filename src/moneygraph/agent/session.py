@@ -14,6 +14,7 @@ from typing import Any
 from . import llm, prompts
 from .tools import TOOLS, GraphContext
 from .validator import validate
+from .scope import ARITHMETIC, REFUSAL, locally_relevant
 
 GID_IN_QUESTION = re.compile(r"\b\d{15,20}\b")
 
@@ -37,9 +38,20 @@ class Assistant:
         self.history: list[dict[str, Any]] = []
 
     def ask(self, question: str, use_llm: bool | None = None) -> Answer:
+        if ARITHMETIC.search(question):
+            return Answer(REFUSAL)
         use_llm = llm.available() if use_llm is None else (use_llm and llm.available())
         if not use_llm:
+            if not locally_relevant(question, bool(self.history)):
+                return Answer(REFUSAL)
             return self._offline(question)
+        try:
+            allowed = llm.in_scope(question, self.history)
+        except Exception:
+            # Fail closed: an unavailable topic check must not unlock a general chatbot.
+            return Answer("Не удалось проверить тему запроса. Попробуйте ещё раз. " + REFUSAL)
+        if not allowed:
+            return Answer(REFUSAL)
         try:
             return self._with_llm(question)
         except Exception as exc:  # демо не должно падать из-за внешнего API

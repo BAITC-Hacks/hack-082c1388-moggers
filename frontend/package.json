@@ -12,7 +12,8 @@
     "preview": "vite preview --host 127.0.0.1",
     "test": "playwright test",
     "format": "prettier --write src tests *.ts *.json index.html",
-    "format:check": "prettier --check src tests *.ts *.json index.html"
+    "format:check": "prettier --check src tests *.ts *.json index.html",
+    "test:unit": "playwright test --config playwright.unit.config.ts"
   },
   "dependencies": {
     "cytoscape": "^3.33.1",

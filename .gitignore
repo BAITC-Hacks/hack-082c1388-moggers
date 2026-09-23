@@ -5,3 +5,12 @@ venv/
 .pytest_cache/
 frontend/node_modules/
 frontend/dist/
+
+# Local secrets and test/build artifacts
+.env
+.env.*
+!.env.example
+frontend/test-results/
+frontend/playwright-report/
+*.tsbuildinfo
+.runtime/

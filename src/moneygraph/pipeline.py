@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 import time
 from pathlib import Path
 
@@ -103,6 +104,8 @@ def run(data_dir: Path, out_dir: Path, seed: int = 42, quiet: bool = False) -> d
 
 
 def main() -> int:
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8")
     ap = argparse.ArgumentParser(description="Граф денег: пайплайн ролей и приоритетов")
     ap.add_argument("--data", default="data", type=Path)
     ap.add_argument("--out", default="out", type=Path)

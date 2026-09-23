@@ -243,6 +243,10 @@ export default function App() {
               {item.id === 'nodes' && data && <small>{number(data.nodes.length)}</small>}
             </a>
           ))}
+          <a className={s.navItem} href="/assistant#tab=chat" aria-label="ИИ-ассистент">
+            <CircleHelp size={20} />
+            <span>ИИ-ассистент</span>
+          </a>
         </nav>
         <div className={s.sidebarBottom}>
           <div className={s.localNote}>
@@ -276,7 +280,7 @@ export default function App() {
                 setSearchMessage('');
               }}
             />
-            <button aria-label="Найти узел" type="submit">
+            <button aria-label="Найти узел" type="submit" disabled={!data}>
               <ArrowRight size={16} />
             </button>
             {searchMessage && (

@@ -13,7 +13,8 @@ dependencies = [
 
 [project.optional-dependencies]
 # Ассистент опционален: пайплайн и выгрузки считаются без него и без интернета.
-assistant = ["openai>=1.54"]
+assistant = ["openai>=1.54", "python-dotenv>=1.0"]
+web = ["fastapi>=0.115", "uvicorn>=0.30", "openai>=1.54", "python-dotenv>=1.0"]
 
 [project.scripts]
 moneygraph = "moneygraph.pipeline:main"

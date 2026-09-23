@@ -1,4 +1,12 @@
 import { defineConfig } from '@playwright/test';
+import { fileURLToPath } from 'node:url';
+
+const python = fileURLToPath(
+  new URL(
+    process.platform === 'win32' ? '../.venv/Scripts/python.exe' : '../.venv/bin/python',
+    import.meta.url,
+  ),
+);
 
 export default defineConfig({
   testDir: './tests',
@@ -10,7 +18,7 @@ export default defineConfig({
     trace: 'retain-on-failure',
   },
   webServer: {
-    command: '../.venv/bin/python -m uvicorn moneygraph.api:app --host 127.0.0.1 --port 8000',
+    command: `"${python}" -m uvicorn moneygraph.api:app --host 127.0.0.1 --port 8000`,
     url: 'http://127.0.0.1:8000/api/v1/dataset',
     reuseExistingServer: !process.env.CI,
   },

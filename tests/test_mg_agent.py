@@ -133,6 +133,7 @@ def test_offline_answer_is_grounded(assistant, top_gids):
 # ---------------------------------------------------------------- LLM-ветка (мок)
 
 def test_llm_path_uses_tools_and_validates(assistant, top_gids, monkeypatch):
+    monkeypatch.setattr(llm, "in_scope", lambda *args: True)
     called: list[str] = []
 
     def fake_run(messages, dispatch, on_step=None, max_steps=6):
@@ -151,6 +152,7 @@ def test_llm_path_uses_tools_and_validates(assistant, top_gids, monkeypatch):
 
 
 def test_hallucinated_answer_falls_back(assistant, monkeypatch):
+    monkeypatch.setattr(llm, "in_scope", lambda *args: True)
     monkeypatch.setattr(llm, "available", lambda: True)
     monkeypatch.setattr(llm, "run", lambda *a, **k: "Деньги ушли на [100000000000000009].")
     r = assistant.ask("кого смотреть первым?", use_llm=True)
@@ -159,6 +161,7 @@ def test_hallucinated_answer_falls_back(assistant, monkeypatch):
 
 
 def test_llm_outage_still_answers(assistant, monkeypatch):
+    monkeypatch.setattr(llm, "in_scope", lambda *args: True)
     def boom(*a, **k):
         raise RuntimeError("503 upstream")
 
