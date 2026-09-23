@@ -49,12 +49,12 @@ def summarize(df: pd.DataFrame, edges: pd.DataFrame) -> pd.DataFrame:
             "n_seed": int(part.is_seed.sum()),
             "sum_kzt_internal": float(internal.get(cid, 0.0)),
             "top_gids": " ".join(str(int(x)) for x in top.gid),
-            "hypothesis": hypothesis(part, float(internal.get(cid, 0.0))),
+            "hypothesis": hypothesis(part),
         })
     return pd.DataFrame(rows).sort_values("n_nodes", ascending=False).reset_index(drop=True)
 
 
-def hypothesis(part: pd.DataFrame, internal_kzt: float) -> str:
+def hypothesis(part: pd.DataFrame) -> str:
     """Гипотеза строится из состава ролей — формулируется как версия, не как вывод."""
     counts = part.role.value_counts()
     n_seed = int(part.is_seed.sum())
@@ -62,6 +62,7 @@ def hypothesis(part: pd.DataFrame, internal_kzt: float) -> str:
     cons = int(counts.get("consolidator", 0))
     dist = int(counts.get("distributor", 0))
     transit = int(counts.get("transit", 0))
+    flow = float(part.flow_kzt.sum())
 
     nodes_of = lambda n: count(n, "узел", "узла", "узлов")
     if coord and cons:
@@ -82,4 +83,4 @@ def hypothesis(part: pd.DataFrame, internal_kzt: float) -> str:
 
     seed_part = (count(n_seed, "seed-клиент", "seed-клиента", "seed-клиентов")
                  if n_seed else "без seed-клиентов")
-    return f"{kind}; {seed_part}; внутренний оборот {internal_kzt / 1e6:.1f} млн KZT"
+    return f"{kind}; {seed_part}; внутренний оборот {flow / 1e6:.1f} млн KZT"

@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from . import clusters, dashboard, features, graph, loading, priority, roles, structure, viewer
+from . import clusters, features, graph, loading, priority, roles, structure, viewer
 from .config import ROLES
 
 # Округление экспорта: многопоточный scipy даёт расхождения на уровне 1e-16,
@@ -72,8 +72,7 @@ def run(data_dir: Path, out_dir: Path, seed: int = 42, quiet: bool = False) -> d
     nodes_roles = (f[EXPORT_COLUMNS]
                    .sort_values(["priority_score", "gid"], ascending=[False, True]))
     nodes_roles.to_csv(out_dir / "nodes_roles.csv", index=False)
-    cluster_summary = clusters.summarize(f, ds.edges)
-    cluster_summary.to_csv(out_dir / "clusters.csv", index=False)
+    clusters.summarize(f, ds.edges).to_csv(out_dir / "clusters.csv", index=False)
     top = priority.top_nodes(f)
     top.to_csv(out_dir / "top_nodes.csv", index=False)
 
@@ -82,8 +81,6 @@ def run(data_dir: Path, out_dir: Path, seed: int = 42, quiet: bool = False) -> d
     res = structure.resilience(g, ranked_gids, ds.seeds)
     res.to_csv(out_dir / "resilience.csv", index=False)
     viewer.build(f, ds.edges, out_dir / "viewer.html", res)
-    dashboard.build(nodes_roles, ds.edges, cluster_summary, top, res, facts,
-                    out_dir / "dashboard.json")
     f.to_parquet(out_dir / "features.parquet", index=False)  # для интерфейса
     log(f"Устойчивость: изъятие топ-10 отрезает "
         f"{(1 - res.loc[res.removed_top_n == 10, 'reachable_share'].iloc[0]):.0%} узлов от seed")

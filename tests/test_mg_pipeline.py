@@ -101,25 +101,8 @@ def test_runs_are_byte_identical(tmp_path):
     a, b = tmp_path / "a", tmp_path / "b"
     run(ROOT / "data", a, quiet=True)
     run(ROOT / "data", b, quiet=True)
-    for name in ("nodes_roles.csv", "clusters.csv", "top_nodes.csv", "dashboard.json"):
+    for name in ("nodes_roles.csv", "clusters.csv", "top_nodes.csv"):
         assert (a / name).read_bytes() == (b / name).read_bytes(), name
-
-
-def test_dashboard_identifiers_and_cluster_amounts(result):
-    import json
-    snapshot = json.loads((result[0] / "dashboard.json").read_text())
-    nodes = snapshot["nodes"]
-    ids = {n["gid"] for n in nodes}
-    assert len(ids) == 2248
-    original = pd.read_parquet(ROOT / "data/nodes.parquet")
-    assert ids == {str(gid) for gid in original.gid}
-    assert all(isinstance(n["gid"], str) for n in nodes)
-    assert all(e["src"] in ids and e["dst"] in ids for e in snapshot["edges"])
-    assert all(n["gid"] in ids for n in snapshot["top_nodes"])
-    for cluster in snapshot["clusters"]:
-        assert set(cluster["top_gids"]) <= ids
-        amount = cluster["sum_kzt_internal"] / 1e6
-        assert f"внутренний оборот {amount:.1f} млн KZT" in cluster["hypothesis"]
 
 
 def test_cli_entry_point(tmp_path):

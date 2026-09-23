@@ -11,12 +11,13 @@ dependencies = [
     "scipy>=1.11",
 ]
 
+[project.optional-dependencies]
+# Ассистент опционален: пайплайн и выгрузки считаются без него и без интернета.
+assistant = ["openai>=1.54"]
+
 [project.scripts]
 moneygraph = "moneygraph.pipeline:main"
-
-[project.optional-dependencies]
-web = ["fastapi>=0.115,<1", "uvicorn>=0.30,<1"]
-test = ["pytest>=8", "httpx>=0.27,<1"]
+moneygraph-ask = "moneygraph.cli:main"
 
 [build-system]
 requires = ["hatchling"]
