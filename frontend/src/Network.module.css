@@ -1,0 +1,610 @@
+.workspace {
+  background: #fff;
+  border: 1px solid #e1e8f2;
+  border-radius: 12px;
+  overflow: hidden;
+}
+.workspace:fullscreen {
+  width: 100vw;
+  height: 100vh;
+  border: 0;
+  border-radius: 0;
+  overflow: auto;
+  padding: 10px;
+}
+.modeBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+  flex-wrap: wrap;
+  padding: 16px 18px;
+  border-bottom: 1px solid #e8eef6;
+}
+.modeTabs {
+  display: flex;
+  gap: 5px;
+  background: #f1f5fb;
+  border-radius: 8px;
+  padding: 4px;
+}
+.modeTabs button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 13px;
+  border-radius: 6px;
+  font-size: 12px;
+  color: #7387a5;
+}
+.modeTabs button[aria-pressed='true'] {
+  color: #2563eb;
+  background: #fff;
+  box-shadow: 0 2px 5px #1c3c6f10;
+  font-weight: 600;
+}
+.toolbar {
+  display: flex;
+  gap: 15px;
+  align-items: center;
+  flex-wrap: wrap;
+  padding: 15px 18px;
+  border-bottom: 1px solid #e8eef6;
+}
+.anchor {
+  display: flex;
+  gap: 9px;
+  color: #2563eb;
+  align-items: center;
+  margin-right: auto;
+}
+.anchor small {
+  display: block;
+  color: #7388a4;
+  letter-spacing: 0.8px;
+  font-size: 8px;
+  margin-bottom: 5px;
+}
+.anchor strong {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+.direction {
+  display: flex;
+  gap: 3px;
+}
+.direction button {
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  color: #7f91a9;
+}
+.direction button[aria-pressed='true'] {
+  background: #edf4ff;
+  color: #2563eb;
+}
+.amountLabel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 10px;
+  color: #7e91ac;
+}
+.amountLabel input {
+  width: 110px;
+  font-size: 11px;
+}
+.toolbar select {
+  font-size: 11px;
+}
+.overviewTitle {
+  margin-right: auto;
+}
+.overviewTitle strong {
+  display: block;
+  font-size: 12px;
+  font-weight: 550;
+}
+.overviewTitle span {
+  display: block;
+  margin-top: 5px;
+  color: #7388a4;
+  font-size: 10px;
+}
+.edgeLimit {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 10px;
+  color: #7388a4;
+}
+.graphGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+.withPanel {
+  grid-template-columns: minmax(0, 1fr) 340px;
+}
+.plot {
+  position: relative;
+  background-color: #fbfdff;
+  background-image: radial-gradient(#d9e3f2 1px, transparent 1px);
+  background-size: 22px 22px;
+  min-width: 0;
+}
+.canvasWrap {
+  height: 580px;
+  position: relative;
+}
+.canvas {
+  position: absolute;
+  inset: 0;
+}
+.lanes {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  position: absolute;
+  top: 14px;
+  left: 20px;
+  right: 20px;
+  z-index: 1;
+  pointer-events: none;
+  font-size: 9px;
+  color: #8fa1ba;
+}
+.lanes span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #ffffffda;
+  padding: 5px 8px;
+  border: 1px solid #edf2f9;
+  border-radius: 5px;
+}
+.plotControls {
+  position: absolute;
+  bottom: 17px;
+  right: 15px;
+  display: flex;
+  gap: 5px;
+}
+.plotControls button {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  background: #fff;
+  border: 1px solid #dce6f4;
+  color: #7790b1;
+  border-radius: 6px;
+  box-shadow: 0 2px 5px #173a6006;
+}
+.plotControls button:hover {
+  color: #2563eb;
+  background: #eef5ff;
+}
+.plotHelp {
+  position: absolute;
+  bottom: 22px;
+  left: 15px;
+  pointer-events: none;
+  font-size: 9px;
+  color: #8b9db7;
+  background: #ffffffed;
+  padding: 5px;
+  border-radius: 4px;
+  max-width: calc(100% - 210px);
+}
+.tooltip {
+  position: absolute;
+  top: 50px;
+  left: 15px;
+  border: 1px solid #dae5f4;
+  padding: 10px 12px;
+  border-radius: 6px;
+  color: #486c9c;
+  font-size: 11px;
+  background: #fff;
+  box-shadow: 0 3px 15px #264c7610;
+  pointer-events: none;
+  max-width: calc(100% - 30px);
+  overflow-wrap: anywhere;
+}
+.empty {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 25px;
+  color: #8499b5;
+  font-size: 12px;
+  pointer-events: none;
+}
+.inspector {
+  min-width: 0;
+  border-left: 1px solid #e1e8f2;
+  height: 580px;
+  overflow-y: auto;
+  background: white;
+}
+.inspectorHeading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 20px;
+}
+.inspectorHeading button {
+  color: #8299b8;
+  padding: 6px;
+  border-radius: 6px;
+}
+.clusterCard,
+.edgeCard {
+  padding: 20px;
+}
+.clusterMetrics {
+  display: flex;
+  gap: 40px;
+  margin-bottom: 20px;
+}
+.clusterMetrics strong {
+  display: block;
+  font-size: 28px;
+  font-weight: 550;
+}
+.clusterMetrics span {
+  display: block;
+  color: #8b9eb6;
+  margin-top: 5px;
+  font-size: 10px;
+}
+.internalFlow {
+  font-size: 11px;
+  color: #7a8fa9;
+  border-block: 1px solid #edf1f7;
+  padding: 13px 0;
+}
+.internalFlow strong {
+  display: block;
+  font-size: 21px;
+  font-weight: 550;
+  color: #58799e;
+  margin-top: 8px;
+}
+.hypothesis {
+  font-size: 11px;
+  color: #6d839f;
+  line-height: 1.8;
+}
+.clusterCard h3 {
+  font-size: 12px;
+  font-weight: 550;
+  margin: 22px 0 10px;
+}
+.clusterNode {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 10px 0;
+  border-bottom: 1px solid #edf2f8;
+  color: #58799e;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.clusterNode:hover {
+  color: #2563eb;
+}
+.clusterCard > button:last-child {
+  margin-top: 18px;
+}
+.transferPath {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 15px;
+  border: 1px solid #e4edf8;
+  border-radius: 8px;
+  color: #829abe;
+}
+.transferPath button {
+  font-size: 12px;
+  color: #38679e;
+  padding: 3px 0;
+  overflow-wrap: anywhere;
+  text-align: left;
+}
+.transferPath svg {
+  transform: rotate(90deg);
+  margin-left: 10px;
+}
+.transferAmount {
+  display: block;
+  font-size: 27px;
+  font-weight: 550;
+  margin: 24px 0 8px;
+}
+.edgeCard > p {
+  color: #8194ac;
+  font-size: 11px;
+}
+.nodeActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 13px 15px;
+  border-bottom: 1px solid #e5edf7;
+}
+.nodeActions span {
+  color: #8a9db7;
+  font-size: 9px;
+}
+.statusBar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 13px 17px;
+  border-top: 1px solid #e4ecf6;
+  color: #8295b0;
+  font-size: 10px;
+}
+.statusBar b {
+  color: #47658e;
+  font-weight: 550;
+}
+.moreButtons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.moreButtons button {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  color: #4674b3;
+  padding: 5px 0;
+}
+.notice {
+  font-size: 11px;
+  line-height: 1.7;
+  margin: 14px 17px;
+  background: #f2f7ff;
+  padding: 12px;
+  border: 1px solid #e0eaf9;
+  border-radius: 7px;
+  color: #738aa8;
+}
+.edgeCard .notice {
+  margin: 20px 0 0;
+}
+.participants,
+.transfers {
+  border-top: 1px solid #e6edf6;
+}
+.participants summary,
+.transfers summary {
+  cursor: pointer;
+  padding: 15px 18px;
+  color: #597493;
+  font-size: 12px;
+  font-weight: 500;
+}
+.participants summary span,
+.transfers summary span {
+  font-size: 10px;
+  background: #edf3fb;
+  color: #7790af;
+  padding: 3px 7px;
+  border-radius: 4px;
+  margin-left: 7px;
+}
+.nodeChips {
+  display: flex;
+  gap: 7px;
+  flex-wrap: wrap;
+  padding: 0 18px 17px;
+  max-height: 190px;
+  overflow: auto;
+}
+.nodeChips button {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 9px;
+  border-radius: 5px;
+  border: 1px solid #e2eaf5;
+  color: #7287a5;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+.nodeChips button[aria-pressed='true'] {
+  color: #2563eb;
+  background: #eef4ff;
+  border-color: #a4c5f8;
+}
+.nodeChips i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+.transferTable {
+  position: relative;
+  max-height: 310px;
+  overflow: auto;
+}
+.transferTable th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+.transferTable td {
+  white-space: nowrap;
+  font-size: 11px;
+}
+.transferTable button {
+  color: #5477a0;
+  font-size: 10px;
+  padding: 4px 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-variant-numeric: tabular-nums;
+}
+.transferTable button:hover {
+  text-decoration: underline;
+  color: #2563eb;
+}
+.activeRow {
+  background: #eef5ff;
+}
+.noTransfers {
+  padding: 0 18px 16px;
+  color: #8b9db5;
+  font-size: 11px;
+}
+@media (max-width: 1200px) {
+  .withPanel {
+    grid-template-columns: minmax(0, 1fr) 300px;
+  }
+  .plotHelp {
+    display: none;
+  }
+  .toolbar {
+    gap: 12px;
+  }
+  .anchor {
+    width: 100%;
+  }
+}
+@media (max-width: 1050px) {
+  .withPanel {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .inspector {
+    border-left: 0;
+    border-top: 1px solid #e1e8f2;
+    height: auto;
+    max-height: 460px;
+  }
+  .canvasWrap {
+    height: 520px;
+  }
+}
+@media (max-width: 650px) {
+  .modeBar {
+    padding: 11px;
+    gap: 8px;
+  }
+  .modeTabs {
+    width: 100%;
+  }
+  .modeTabs button {
+    font-size: 10px;
+    padding: 9px;
+    gap: 6px;
+    flex: 1;
+    justify-content: center;
+  }
+  .modeTabs svg {
+    width: 14px;
+  }
+  .modeBar > button {
+    font-size: 10px;
+  }
+  .toolbar {
+    padding: 12px;
+    gap: 10px;
+  }
+  .direction {
+    width: 100%;
+  }
+  .direction button {
+    flex: 1;
+  }
+  .amountLabel {
+    flex: 1;
+  }
+  .amountLabel input {
+    width: 90px;
+  }
+  .toolbar > select {
+    max-width: 140px;
+  }
+  .anchor strong {
+    font-size: 12px;
+  }
+  .canvasWrap {
+    height: 430px;
+  }
+  .lanes {
+    left: 8px;
+    right: 8px;
+    font-size: 7px;
+    gap: 2px;
+  }
+  .lanes span {
+    padding: 4px;
+    gap: 2px;
+  }
+  .lanes svg {
+    display: none;
+  }
+  .plotControls {
+    right: 10px;
+    bottom: 12px;
+    gap: 4px;
+  }
+  .plotControls button {
+    width: 30px;
+    height: 30px;
+  }
+  .overviewTitle strong {
+    font-size: 11px;
+    line-height: 1.6;
+  }
+  .overviewTitle span {
+    font-size: 9px;
+    line-height: 1.6;
+  }
+  .edgeLimit {
+    width: 100%;
+    justify-content: space-between;
+  }
+  .inspector {
+    max-height: 430px;
+  }
+  .statusBar {
+    padding: 12px;
+    gap: 9px;
+  }
+  .statusBar > span {
+    width: 100%;
+    font-size: 9px;
+  }
+  .moreButtons {
+    justify-content: space-between;
+    width: 100%;
+  }
+  .moreButtons button {
+    font-size: 9px;
+  }
+  .transferTable td {
+    padding: 12px;
+  }
+  .participants summary,
+  .transfers summary {
+    padding: 14px 12px;
+  }
+  .nodeChips {
+    padding: 0 12px 14px;
+  }
+}
