@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from . import clusters, features, graph, loading, priority, roles, viewer
+from . import clusters, features, graph, loading, priority, roles, structure, viewer
 from .config import ROLES
 
 # Округление экспорта: многопоточный scipy даёт расхождения на уровне 1e-16,
@@ -26,6 +26,7 @@ EXPORT_COLUMNS = [
     "pass_through", "retained_kzt", "pagerank", "betweenness", "hub", "authority",
     "seed_sources", "seed_direct", "min_hops_from_seed", "clusters_bridged",
     "fast_pass_share", "max_payers_one_day", "max_receivers_one_day", "hold_days",
+    "cycle_count", "min_cycle_len", "reciprocal_partners", "is_articulation",
     "depth_truncated", "flow_kzt",
 ]
 
@@ -67,9 +68,17 @@ def run(data_dir: Path, out_dir: Path, seed: int = 42, quiet: bool = False) -> d
                    .sort_values(["priority_score", "gid"], ascending=[False, True]))
     nodes_roles.to_csv(out_dir / "nodes_roles.csv", index=False)
     clusters.summarize(f, ds.edges).to_csv(out_dir / "clusters.csv", index=False)
-    priority.top_nodes(f).to_csv(out_dir / "top_nodes.csv", index=False)
+    top = priority.top_nodes(f)
+    top.to_csv(out_dir / "top_nodes.csv", index=False)
+
+    # Что станет с сетью, если изъять топ-N: инфраструктура это была или листья.
+    ranked_gids = nodes_roles.gid.tolist()
+    res = structure.resilience(g, ranked_gids, ds.seeds)
+    res.to_csv(out_dir / "resilience.csv", index=False)
+    viewer.build(f, ds.edges, out_dir / "viewer.html", res)
+    log(f"Устойчивость: изъятие топ-10 отрезает "
+        f"{(1 - res.loc[res.removed_top_n == 10, 'reachable_share'].iloc[0]):.0%} узлов от seed")
     f.to_parquet(out_dir / "features.parquet", index=False)  # для интерфейса
-    viewer.build(f, ds.edges, out_dir / "viewer.html")
 
     elapsed = time.perf_counter() - t0
     summary = {
@@ -77,6 +86,9 @@ def run(data_dir: Path, out_dir: Path, seed: int = 42, quiet: bool = False) -> d
         "n_nodes": len(f),
         "n_clusters": int(f.cluster_id.nunique()),
         "roles": {k: int(v) for k, v in f.role.value_counts().items()},
+        "nodes_in_cycles": int((f.min_cycle_len > 0).sum()),
+        "reciprocal_nodes": int((f.reciprocal_partners > 0).sum()),
+        "articulation_points": int(f.is_articulation.sum()),
         "facts": {k: v for k, v in facts.items() if k not in ("orphan_nodes",)},
     }
     (out_dir / "summary.json").write_text(

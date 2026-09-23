@@ -1,5 +1,5 @@
 {
-  "elapsed_sec": 2.63,
+  "elapsed_sec": 3.34,
   "n_nodes": 2248,
   "n_clusters": 91,
   "roles": {
@@ -11,6 +11,9 @@
     "consolidator": 30,
     "coordinator": 25
   },
+  "nodes_in_cycles": 303,
+  "reciprocal_nodes": 266,
+  "articulation_points": 527,
   "facts": {
     "n_nodes": 2248,
     "n_edges": 3119,

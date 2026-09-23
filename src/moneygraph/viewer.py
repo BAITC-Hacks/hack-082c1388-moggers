@@ -31,20 +31,24 @@ NODE_FIELDS = [
     "gid", "role", "role_score", "cluster_id", "priority_score", "evidence",
     "depth", "is_seed", "in_deg", "out_deg", "in_kzt", "out_kzt",
     "pass_through", "seed_sources", "betweenness", "depth_truncated",
+    "reciprocal_partners", "min_cycle_len", "is_articulation",
 ]
 
 
-def build(features: pd.DataFrame, edges: pd.DataFrame, out_path: Path) -> Path:
+def build(features: pd.DataFrame, edges: pd.DataFrame, out_path: Path,
+          resilience: pd.DataFrame | None = None) -> Path:
     nodes = features[NODE_FIELDS].copy()
     nodes["is_seed"] = nodes.is_seed.astype(bool)
     nodes["depth_truncated"] = nodes.depth_truncated.astype(bool)
     nodes["pass_through"] = nodes.pass_through.where(nodes.pass_through.notna(), None)
+    nodes["is_articulation"] = nodes.is_articulation.astype(bool)
 
     payload = {
         "nodes": nodes.to_dict("records"),
         "edges": edges[["src", "dst", "sum_kzt", "n_tx"]].to_dict("records"),
         "roleStyle": ROLE_STYLE,
         "roleRu": ROLE_RU_FULL,
+        "resilience": [] if resilience is None else resilience.to_dict("records"),
     }
     html = _TEMPLATE.replace("/*__CYTOSCAPE__*/", (ASSETS / "cytoscape.min.js").read_text(encoding="utf-8"))
     html = html.replace("/*__DATA__*/", json.dumps(payload, ensure_ascii=False, default=str))
@@ -82,6 +86,9 @@ _TEMPLATE = r"""<!doctype html>
   input,select { width:100%; padding:8px 10px; border:1px solid var(--hair);
                  border-radius:9px; background:var(--plane); font:inherit; color:inherit; }
   input:focus,select:focus { outline:2px solid rgba(42,120,214,.25); }
+  #resilience { padding:12px; }
+  #resilience table { margin-top:6px; }
+  #resilience td { padding:3px 0; font-size:11.5px; }
   #toplist { flex:1; overflow:auto; padding:8px; }
   #toplist h3 { margin:4px 6px 8px; font-size:11px; text-transform:uppercase;
                 letter-spacing:.04em; color:var(--muted); }
@@ -139,6 +146,7 @@ _TEMPLATE = r"""<!doctype html>
         <option value="hops1">окружение выбранного узла, 1 колено</option>
       </select>
     </div>
+    <div class="panel" id="resilience"></div>
     <div class="panel" id="toplist"><h3>Кого смотреть первым</h3><div id="rows"></div></div>
   </div>
 
@@ -189,6 +197,20 @@ document.getElementById('legend').innerHTML = present.map(r => {
   return `<span><i class="dot" style="background:${s.color};border-radius:${radius};${rot}"></i>`
        + `${DATA.roleRu[r]||r} · ${DATA.nodes.filter(n=>n.role===r).length}</span>`;
 }).join('');
+
+// --- устойчивость сети ---
+if (DATA.resilience.length) {
+  const rows = DATA.resilience.filter(r => r.removed_top_n > 0)
+    .map(r => `<tr><td>топ-${r.removed_top_n}</td>`
+            + `<td>${Math.round((1 - r.reachable_share) * 100)}%</td>`
+            + `<td>${r.components}</td></tr>`).join('');
+  document.getElementById('resilience').innerHTML =
+    `<h3 style="margin:0 0 2px;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)">
+       Устойчивость сети</h3>
+     <div class="hint" style="font-size:11px">Если изъять топ-N узлов приоритета</div>
+     <table><tr><td class="m">изъято</td><td class="m">отрезано от seed</td><td class="m">компонент</td></tr>
+     ${rows}</table>`;
+}
 
 // --- список приоритета ---
 let selected = null;
@@ -327,6 +349,9 @@ function card(n) {
       <tr><td>Коэффициент пропуска</td><td>${n.pass_through==null?'—':Number(n.pass_through).toFixed(2)}</td></tr>
       <tr><td>Доходят от seed</td><td>${n.seed_sources}</td></tr>
       <tr><td>Посредничество</td><td>${Number(n.betweenness).toFixed(5)}</td></tr>
+      ${n.reciprocal_partners ? `<tr><td>Возврат денег отправителю</td><td>${n.reciprocal_partners} счетов</td></tr>` : ''}
+      ${!n.reciprocal_partners && n.min_cycle_len ? `<tr><td>Замкнутая цепочка</td><td>${n.min_cycle_len} узлов</td></tr>` : ''}
+      ${n.is_articulation ? '<tr><td>Точка сочленения</td><td>да</td></tr>' : ''}
     </table>
     ${ins.length ? '<h4>Крупнейшие входящие</h4>' + ins.map(e =>
       `<div class="row" data-gid="${e.src}">${e.src} <span class="m">· ${money(e.sum_kzt)}</span></div>`).join('') : ''}

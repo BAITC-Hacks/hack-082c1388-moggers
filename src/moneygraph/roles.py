@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 
 from . import config as cfg
-from .text import count, fit, kzt as _kzt, payers as _payers
+from .text import compose, count, fit, kzt as _kzt, payers as _payers
 from .text import receivers_acc as _receivers_acc, receivers_dat as _receivers_dat
 
 
@@ -40,20 +40,39 @@ def assign_roles(f: pd.DataFrame) -> pd.DataFrame:
         role, score, why = _classify(r, bt_cut, sink_cut)
         roles.append(role)
         scores.append(round(_clip01(score), 3))
-        evidence.append(fit(why, 200))
+        evidence.append(why)
 
     return pd.DataFrame({"gid": f.gid, "role": roles,
                          "role_score": scores, "evidence": evidence})
 
 
+def _extras(r) -> list[str]:
+    """Дополнительные признаки по убыванию ценности для аналитика.
+
+    Прямой возврат денег сильнее любого другого сигнала; следом — указание,
+    что источник средств вне выгрузки: оно говорит, какие данные запрашивать.
+    """
+    parts = []
+    if r.reciprocal_partners:
+        parts.append("Деньги возвращаются отправителю: " + count(
+            r.reciprocal_partners, "встречный счёт", "встречных счёта", "встречных счетов") + ".")
+    parts.append(_unexplained(r).strip())
+    if not r.reciprocal_partners and r.min_cycle_len:
+        parts.append(f"Входит в замкнутую цепочку из {r.min_cycle_len} узлов.")
+    if r.is_articulation:
+        parts.append("Точка сочленения: изъятие разрывает связность сети.")
+    return parts
+
+
 def _classify(r, bt_cut: float, sink_cut: float) -> tuple[str, float, str]:
     """Роль, уверенность и обоснование одного узла — единственный источник правды."""
-    role, score, why = _rules(r, bt_cut, sink_cut)
+    role, score, core = _rules(r, bt_cut, sink_cut)
+    extras = _extras(r)
     # Вывод, опирающийся на оборванную выгрузку, не может быть таким же уверенным.
     if r.depth_truncated and role != "terminal_unverified":
         score *= cfg.TRUNCATION_SCORE_PENALTY
-        why += " Обход оборван на 4-м колене — исходящие могли не попасть в выгрузку."
-    return role, score, why
+        extras.append("Обход оборван на 4-м колене — исходящие могли не попасть в выгрузку.")
+    return role, score, compose([core, *extras], 200)
 
 
 def _rules(r, bt_cut: float, sink_cut: float) -> tuple[str, float, str]:
@@ -77,8 +96,8 @@ def _rules(r, bt_cut: float, sink_cut: float) -> tuple[str, float, str]:
         return "coordinator", score, (
             f"Посредничество в верхнем 1% (betweenness {r.betweenness:.4f}), связывает "
             f"{count(r.clusters_bridged, 'кластер', 'кластера', 'кластеров')}, "
-            f"деньги доходят от {r.seed_sources} seed. "
-            f"Вход {r.in_deg}, выход {r.out_deg}. Признаки координации." + _unexplained(r))
+            f"деньги от {r.seed_sources} seed. "
+            f"Вход {r.in_deg}, выход {r.out_deg}.")
 
     # 2. Точка консолидации: сбор доминирует над раздачей.
     if collects and r.in_deg >= cfg.CONSOLIDATOR_ASYMMETRY * max(r.out_deg, 1):
@@ -95,7 +114,7 @@ def _rules(r, bt_cut: float, sink_cut: float) -> tuple[str, float, str]:
         return "distributor", score, (
             f"Раздаёт {_kzt(r.out_kzt)} на {_receivers_acc(r.out_deg)} при "
             f"{_payers(r.in_deg)}; средний перевод {_kzt(r.avg_out_tx_kzt)}. "
-            f"Признаки веерного распределения." + _unexplained(r))
+            f"Признаки веерного распределения.")
 
     # 4. Транзит: пропускает дальше, не удерживая. Для seed не считаем —
     #    входящие суммы у них занижены устройством выгрузки.
@@ -129,9 +148,9 @@ def _rules(r, bt_cut: float, sink_cut: float) -> tuple[str, float, str]:
     if r.depth_truncated and (r.in_deg >= 2 or r.in_kzt >= sink_cut):
         score = 0.35 + 0.15 * min(r.in_deg / 5, 1)
         return "terminal_unverified", score, (
-            f"Принял {_kzt(r.in_kzt)} от {_payers(r.in_deg)}, исходящих нет — "
-            f"но узел на 4-м колене, где обход остановлен. Отличить конечного "
-            f"получателя от необследованного нельзя без выгрузки на 5-е колено.")
+            f"Принял {_kzt(r.in_kzt)} от {_payers(r.in_deg)}, исходящих нет, но узел "
+            f"на 4-м колене, где обход остановлен: отличить конечного получателя "
+            f"от необследованного нельзя без выгрузки на 5-е колено.")
 
     # 7. Периферия.
     if r.in_deg == 0 and r.out_deg == 0:
@@ -140,5 +159,4 @@ def _rules(r, bt_cut: float, sink_cut: float) -> tuple[str, float, str]:
             f"узла либо ниже порога 5 000 ₸, либо вне периметра выгрузки.")
     return "peripheral", 0.6, (
         f"Вход: {_payers(r.in_deg)} ({_kzt(r.in_kzt)}), выход: "
-        f"{_receivers_acc(r.out_deg)} ({_kzt(r.out_kzt)}) — ни один порог роли "
-        f"не пройден." + _unexplained(r))
+        f"{_receivers_acc(r.out_deg)} ({_kzt(r.out_kzt)}) — ни один порог роли не пройден.")

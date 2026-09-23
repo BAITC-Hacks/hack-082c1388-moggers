@@ -114,3 +114,28 @@ def test_cli_entry_point(tmp_path):
     )
     assert proc.returncode == 0, proc.stderr
     assert (tmp_path / "nodes_roles.csv").exists()
+
+
+def test_cycles_and_articulation_are_exported(nodes_roles):
+    """Бонус ТЗ: возвратные потоки и структурная незаменимость."""
+    assert nodes_roles.min_cycle_len.max() >= 2
+    assert (nodes_roles.reciprocal_partners > 0).sum() > 0
+    assert nodes_roles.is_articulation.sum() > 0
+    # Цикл длины 2 — это взаимные переводы, значит у узла есть и вход, и выход.
+    direct = nodes_roles[nodes_roles.reciprocal_partners > 0]
+    assert (direct.in_deg > 0).all() and (direct.out_deg > 0).all()
+
+
+def test_resilience_export(result):
+    """Изъятие топ-N узлов должно монотонно ухудшать связность сети."""
+    res = pd.read_csv(result[0] / "resilience.csv")
+    assert set(res.columns) >= {"removed_top_n", "components", "largest_component",
+                                "reachable_from_seeds", "reachable_share",
+                                "flow_removed_kzt", "flow_removed_share"}
+    assert res.removed_top_n.iloc[0] == 0
+    assert res.reachable_share.iloc[0] == 1.0
+    assert res.reachable_share.is_monotonic_decreasing
+    assert res.largest_component.is_monotonic_decreasing
+    assert res.components.is_monotonic_increasing
+    # Изъятие десяти узлов из 2 248 должно отрезать заметную часть сети.
+    assert res.loc[res.removed_top_n == 10, "reachable_share"].iloc[0] < 0.8

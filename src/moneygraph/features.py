@@ -9,6 +9,7 @@ import networkx as nx
 import numpy as np
 import pandas as pd
 
+from . import structure
 from .config import TRANSIT_FAST_DAYS
 from .loading import Dataset
 
@@ -127,15 +128,26 @@ def build_features(ds: Dataset, g: nx.DiGraph) -> pd.DataFrame:
     df = structural(g, ds.nodes)
     df = df.merge(seed_reachability(g, ds.seeds), on="gid", how="left")
     df = df.merge(temporal(ds), on="gid", how="left")
+    df = df.merge(structure.cycle_features(g), on="gid", how="left")
+    df = df.merge(structure.articulation(g), on="gid", how="left")
 
     fill = {"seed_sources": 0, "seed_direct": 0, "max_payers_one_day": 0,
             "max_receivers_one_day": 0, "fast_pass_share": 0.0,
-            "active_days_in": 0, "active_days_out": 0, "hold_days": 0}
+            "active_days_in": 0, "active_days_out": 0, "hold_days": 0,
+            "cycle_count": 0, "min_cycle_len": 0, "reciprocal_partners": 0,
+            "is_articulation": False}
     df = df.fillna(value=fill)
     df["min_hops_from_seed"] = df.min_hops_from_seed.replace(np.inf, -1)
 
     for col in ("betweenness", "pagerank", "in_kzt", "out_kzt", "seed_sources"):
         df[f"pct_{col}"] = _rank_pct(df[col])
+    df["is_articulation"] = df.is_articulation.astype(bool)
     df["flow_kzt"] = df.in_kzt + df.out_kzt
     df["pct_flow_kzt"] = _rank_pct(df.flow_kzt)
+    # Структурный сигнал: возврат денег отправителю плюс незаменимость в связности.
+    # Цикл длины 2 — прямой возврат, он весит больше длинной петли.
+    cycle_signal = np.where(df.min_cycle_len == 0, 0.0,
+                            np.where(df.min_cycle_len <= 2, 1.0,
+                                     np.where(df.min_cycle_len <= 4, 0.6, 0.35)))
+    df["structure_score"] = np.clip(cycle_signal + 0.3 * df.is_articulation, 0, 1)
     return df

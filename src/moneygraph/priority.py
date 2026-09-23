@@ -20,6 +20,7 @@ def compute(f: pd.DataFrame) -> pd.DataFrame:
         "seed_sources": _norm(f.seed_sources),
         "betweenness": _norm(f.betweenness),
         "flow": _norm(f.flow_kzt),
+        "structure": f.structure_score,
         "pagerank": _norm(f.pagerank),
         "fan": _norm(f.in_deg + f.out_deg),
     })
@@ -40,11 +41,24 @@ def _why(r, part: pd.Series) -> str:
         "seed_sources": f"деньги доходят от {count(r.seed_sources, 'seed-клиента', 'seed-клиентов', 'seed-клиентов')}",
         "betweenness": f"стоит на путях сети (betweenness {r.betweenness:.4f})",
         "flow": f"оборот {(r.in_kzt + r.out_kzt) / 1e6:.1f} млн ₸",
+        "structure": _structure_reason(r),
         "pagerank": f"влияние с учётом сумм (pagerank {r.pagerank:.4f})",
         "fan": f"связей: {r.in_deg} входящих, {r.out_deg} исходящих",
     }
     drivers = "; ".join(names[k] for k in top.index)
     return f"{cfg.ROLE_RU.get(r.role, r.role)}. {drivers}."[:300]
+
+
+def _structure_reason(r) -> str:
+    bits = []
+    if r.reciprocal_partners:
+        bits.append(f"деньги возвращаются отправителю "
+                    f"({count(r.reciprocal_partners, 'встречный счёт', 'встречных счёта', 'встречных счетов')})")
+    elif r.min_cycle_len:
+        bits.append(f"входит в замкнутую цепочку из {r.min_cycle_len} узлов")
+    if r.is_articulation:
+        bits.append("точка сочленения: изъятие разрывает связность")
+    return "; ".join(bits) or "структурных особенностей нет"
 
 
 def top_nodes(f: pd.DataFrame, n: int = 25) -> pd.DataFrame:
