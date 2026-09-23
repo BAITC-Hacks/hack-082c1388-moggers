@@ -1,0 +1,85 @@
+"""Один запуск: сырые parquet -> nodes_roles.csv, clusters.csv, top_nodes.csv."""
+from __future__ import annotations
+
+import argparse
+import json
+import time
+from pathlib import Path
+
+import pandas as pd
+
+from . import clusters, features, graph, loading, priority, roles
+from .config import ROLES
+
+EXPORT_COLUMNS = [
+    "gid", "role", "role_score", "cluster_id", "priority_score", "evidence",
+    # Дальше — признаки, на которых построены роли: любую строку можно проверить.
+    "depth", "is_seed", "in_deg", "out_deg", "in_kzt", "out_kzt", "in_tx", "out_tx",
+    "pass_through", "retained_kzt", "pagerank", "betweenness", "hub", "authority",
+    "seed_sources", "seed_direct", "min_hops_from_seed", "clusters_bridged",
+    "fast_pass_share", "max_payers_one_day", "max_receivers_one_day", "hold_days",
+    "depth_truncated", "flow_kzt",
+]
+
+
+def run(data_dir: Path, out_dir: Path, seed: int = 42, quiet: bool = False) -> dict:
+    t0 = time.perf_counter()
+    log = (lambda *a: None) if quiet else print
+
+    ds = loading.load(data_dir)
+    facts = loading.sanity(ds)
+    log(f"Данные: {facts['n_nodes']} узлов, {facts['n_edges']} рёбер, "
+        f"{facts['n_tx']} транзакций, оборот {facts['turnover_kzt']:,.0f} ₸")
+    if not facts["edges_match_tx"]:
+        raise SystemExit("edges и transactions не сходятся — датасет повреждён")
+
+    g = graph.build(ds.edges, ds.nodes)
+    f = features.build_features(ds, g)
+    log(f"Признаки посчитаны: {f.shape[1]} колонок")
+
+    cl = clusters.assign(g, f, seed=seed)
+    f = f.merge(cl, on="gid", how="left")
+    f["cluster_id"] = f.cluster_id.fillna(-1).astype(int)
+    f["clusters_bridged"] = f.gid.map(
+        clusters.bridged_clusters(g, dict(zip(f.gid, f.cluster_id)))).fillna(1).astype(int)
+    log(f"Кластеров: {f.cluster_id.nunique()}")
+
+    f = f.merge(roles.assign_roles(f), on="gid", how="left")
+    log("Роли: " + ", ".join(f"{k}={v}" for k, v in f.role.value_counts().items()))
+
+    f = f.merge(priority.compute(f), on="gid", how="left")
+
+    out_dir.mkdir(parents=True, exist_ok=True)
+    nodes_roles = f[EXPORT_COLUMNS].sort_values("priority_score", ascending=False)
+    nodes_roles.to_csv(out_dir / "nodes_roles.csv", index=False)
+    clusters.summarize(f, ds.edges).to_csv(out_dir / "clusters.csv", index=False)
+    priority.top_nodes(f).to_csv(out_dir / "top_nodes.csv", index=False)
+    f.to_parquet(out_dir / "features.parquet", index=False)  # для интерфейса
+
+    elapsed = time.perf_counter() - t0
+    summary = {
+        "elapsed_sec": round(elapsed, 2),
+        "n_nodes": len(f),
+        "n_clusters": int(f.cluster_id.nunique()),
+        "roles": {k: int(v) for k, v in f.role.value_counts().items()},
+        "facts": {k: v for k, v in facts.items() if k not in ("orphan_nodes",)},
+    }
+    (out_dir / "summary.json").write_text(
+        json.dumps(summary, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
+    log(f"Готово за {elapsed:.1f} с -> {out_dir}/")
+    return summary
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser(description="Граф денег: пайплайн ролей и приоритетов")
+    ap.add_argument("--data", default="data", type=Path)
+    ap.add_argument("--out", default="out", type=Path)
+    ap.add_argument("--seed", default=42, type=int, help="seed для Louvain (воспроизводимость)")
+    ap.add_argument("--quiet", action="store_true")
+    a = ap.parse_args()
+    run(a.data, a.out, a.seed, a.quiet)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
