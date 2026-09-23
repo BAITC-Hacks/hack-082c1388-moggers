@@ -48,6 +48,7 @@ def _why(r, part: pd.Series) -> str:
 
 
 def top_nodes(f: pd.DataFrame, n: int = 25) -> pd.DataFrame:
-    top = f.nlargest(n, "priority_score").reset_index(drop=True)
+    top = (f.sort_values(["priority_score", "gid"], ascending=[False, True])
+           .head(n).reset_index(drop=True))
     top.insert(0, "rank", range(1, len(top) + 1))
     return top[["rank", "gid", "role", "priority_score", "why"]]

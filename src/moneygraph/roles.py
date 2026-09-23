@@ -38,9 +38,6 @@ def assign_roles(f: pd.DataFrame) -> pd.DataFrame:
     roles, scores, evidence = [], [], []
     for r in f.itertuples(index=False):
         role, score, why = _classify(r, bt_cut, sink_cut)
-        if r.depth_truncated and role != "terminal_unverified":
-            score *= cfg.TRUNCATION_SCORE_PENALTY
-            why += " Обход оборван на 4-м колене — исходящие могли не попасть в выгрузку."
         roles.append(role)
         scores.append(round(_clip01(score), 3))
         evidence.append(fit(why, 200))
@@ -50,6 +47,16 @@ def assign_roles(f: pd.DataFrame) -> pd.DataFrame:
 
 
 def _classify(r, bt_cut: float, sink_cut: float) -> tuple[str, float, str]:
+    """Роль, уверенность и обоснование одного узла — единственный источник правды."""
+    role, score, why = _rules(r, bt_cut, sink_cut)
+    # Вывод, опирающийся на оборванную выгрузку, не может быть таким же уверенным.
+    if r.depth_truncated and role != "terminal_unverified":
+        score *= cfg.TRUNCATION_SCORE_PENALTY
+        why += " Обход оборван на 4-м колене — исходящие могли не попасть в выгрузку."
+    return role, score, why
+
+
+def _rules(r, bt_cut: float, sink_cut: float) -> tuple[str, float, str]:
     collects = r.in_deg >= cfg.CONSOLIDATOR_MIN_IN_DEG
     spreads = r.out_deg >= cfg.DISTRIBUTOR_MIN_OUT_DEG
 

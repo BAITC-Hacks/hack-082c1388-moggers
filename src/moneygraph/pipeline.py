@@ -11,6 +11,14 @@ import pandas as pd
 from . import clusters, features, graph, loading, priority, roles
 from .config import ROLES
 
+# Округление экспорта: многопоточный scipy даёт расхождения на уровне 1e-16,
+# из-за которых два одинаковых прогона давали разные байты в CSV.
+EXPORT_ROUNDING = {
+    "in_kzt": 2, "out_kzt": 2, "retained_kzt": 2, "flow_kzt": 2,
+    "pass_through": 4, "fast_pass_share": 4,
+    "pagerank": 8, "betweenness": 8, "hub": 8, "authority": 8,
+}
+
 EXPORT_COLUMNS = [
     "gid", "role", "role_score", "cluster_id", "priority_score", "evidence",
     # Дальше — признаки, на которых построены роли: любую строку можно проверить.
@@ -49,8 +57,14 @@ def run(data_dir: Path, out_dir: Path, seed: int = 42, quiet: bool = False) -> d
 
     f = f.merge(priority.compute(f), on="gid", how="left")
 
+    for col, digits in EXPORT_ROUNDING.items():
+        # +0.0 сводит -0.0 к 0.0: иначе знаковый ноль даёт расхождение в CSV.
+        f[col] = f[col].round(digits) + 0.0
+
     out_dir.mkdir(parents=True, exist_ok=True)
-    nodes_roles = f[EXPORT_COLUMNS].sort_values("priority_score", ascending=False)
+    # Вторичный ключ gid делает порядок строк устойчивым при равных приоритетах.
+    nodes_roles = (f[EXPORT_COLUMNS]
+                   .sort_values(["priority_score", "gid"], ascending=[False, True]))
     nodes_roles.to_csv(out_dir / "nodes_roles.csv", index=False)
     clusters.summarize(f, ds.edges).to_csv(out_dir / "clusters.csv", index=False)
     priority.top_nodes(f).to_csv(out_dir / "top_nodes.csv", index=False)
