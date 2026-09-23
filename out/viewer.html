@@ -44,7 +44,27 @@
   #legend { display:flex; gap:14px; flex-wrap:wrap; padding:9px 14px; font-size:12px; }
   #legend span { display:inline-flex; align-items:center; gap:6px; color:var(--ink2); }
   .dot { width:11px; height:11px; display:inline-block; }
-  #right { width:330px; padding:14px; overflow:auto; }
+  #right { width:330px; display:flex; flex-direction:column; min-height:0; }
+  #tabs { display:flex; gap:4px; padding:10px 12px 0; }
+  .tab { flex:1; padding:6px 8px; border-radius:9px; font-size:12px; font-weight:600;
+         text-align:center; cursor:pointer; color:var(--ink2); }
+  .tab.on { background:rgba(42,120,214,.10); color:var(--accent); }
+  #pane-node,#pane-chat { flex:1; padding:12px 14px 14px; overflow:auto; min-height:0; }
+  #pane-chat { display:none; flex-direction:column; }
+  #chatlog { flex:1; overflow:auto; display:flex; flex-direction:column; gap:8px; }
+  .msg { max-width:92%; padding:8px 11px; border-radius:12px; font-size:12.5px; line-height:1.5; }
+  .msg.me { align-self:flex-end; background:var(--accent); color:#fff; }
+  .msg.ai { align-self:flex-start; background:var(--plane); border:1px solid var(--hair); }
+  .msg .gid { color:var(--accent); cursor:pointer; text-decoration:underline; }
+  .msg.ai .note { display:block; margin-top:5px; color:var(--muted); font-size:11px; }
+  #chatform { display:flex; gap:6px; margin-top:10px; }
+  #chatform input { flex:1; }
+  #chatform button { padding:8px 12px; border:0; border-radius:9px; background:var(--accent);
+                     color:#fff; font:inherit; font-size:12px; cursor:pointer; }
+  #chatform button:disabled { opacity:.5; cursor:default; }
+  .suggest { display:flex; flex-wrap:wrap; gap:5px; margin-top:8px; }
+  .suggest button { background:rgba(11,11,11,.05); color:var(--ink2); border:0; border-radius:11px;
+                    padding:5px 9px; font:inherit; font-size:11px; cursor:pointer; }
   #right h2 { font-size:14px; margin:0 0 2px; font-variant-numeric:tabular-nums; }
   .badge { display:inline-block; padding:2px 9px; border-radius:11px; font-size:11px;
            font-weight:600; color:#fff; margin:6px 0 10px; }
@@ -98,7 +118,17 @@
   </div>
 
   <div class="panel" id="right">
-    <p class="hint">Выберите узел на схеме или в списке слева.</p>
+    <div id="tabs">
+      <div class="tab on" data-pane="node">Узел</div>
+      <div class="tab" data-pane="chat">Ассистент</div>
+    </div>
+    <div id="pane-node"><p class="hint">Выберите узел на схеме или в списке слева.</p></div>
+    <div id="pane-chat">
+      <div id="chatlog"></div>
+      <div class="suggest" id="suggest"></div>
+      <form id="chatform"><input id="chatq" placeholder="Вопрос по сети" autocomplete="off">
+        <button type="submit">Спросить</button></form>
+    </div>
   </div>
 </main>
 
@@ -306,7 +336,7 @@ function card(n) {
   const ins = DATA.edges.filter(e => String(e.dst) === String(n.gid))
     .sort((a,b) => b.sum_kzt - a.sum_kzt).slice(0,6);
   const link = e => `<div class="row" data-gid="${e}">${e}</div>`;
-  document.getElementById('right').innerHTML = `
+  document.getElementById('pane-node').innerHTML = `
     <h2>${n.gid}</h2>
     <span class="badge" style="background:${s.color}">${DATA.roleRu[n.role]||n.role}</span>
     <div class="ev">${n.evidence}</div>
@@ -330,7 +360,7 @@ function card(n) {
       `<div class="row" data-gid="${e.src}">${e.src} <span class="m">· ${money(e.sum_kzt)}</span></div>`).join('') : ''}
     ${outs.length ? '<h4>Крупнейшие исходящие</h4>' + outs.map(e =>
       `<div class="row" data-gid="${e.dst}">${e.dst} <span class="m">· ${money(e.sum_kzt)}</span></div>`).join('') : ''}`;
-  document.querySelectorAll('#right .row').forEach(el =>
+  document.querySelectorAll('#pane-node .row').forEach(el =>
     el.onclick = () => select(el.dataset.gid, true));
 }
 
@@ -354,6 +384,116 @@ document.getElementById('q').oninput = e => {
 };
 roleSel.onchange = clusterSel.onchange = () => { renderRows(currentList()); draw(); };
 document.getElementById('scope').onchange = draw;
+
+// --- ассистент ---
+// Страница остаётся самодостаточной: чат включается, только если рядом
+// работает локальный эндпоинт. Без него схема, роли и поиск работают как обычно.
+const ENDPOINTS = [location.origin.startsWith('http') ? location.origin : null,
+                   'http://127.0.0.1:8765'].filter(Boolean);
+let api = null;
+
+const SUGGESTIONS = [
+  'кого смотреть первым и почему?',
+  'каких данных не хватает по этому узлу?',
+  'что будет, если убрать этот узел?',
+  'возвращаются ли деньги к отправителю?',
+];
+
+function setPane(name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('on', t.dataset.pane === name));
+  document.getElementById('pane-node').style.display = name === 'node' ? 'block' : 'none';
+  document.getElementById('pane-chat').style.display = name === 'chat' ? 'flex' : 'none';
+}
+document.querySelectorAll('.tab').forEach(t => t.onclick = () => setPane(t.dataset.pane));
+
+function chatMsg(cls, html) {
+  const el = document.createElement('div');
+  el.className = 'msg ' + cls;
+  el.innerHTML = html;
+  el.querySelectorAll('.gid').forEach(g => g.onclick = () => {
+    document.getElementById('scope').value = 'hops2';
+    select(g.textContent, true);
+    setPane('node');
+  });
+  const log = document.getElementById('chatlog');
+  log.appendChild(el);
+  log.scrollTop = log.scrollHeight;
+}
+
+// Номера счетов в ответе кликабельны: из ответа сразу на схему.
+function linkGids(text) {
+  const esc = text.replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+  return esc.replace(/\b(\d{15,20})\b/g, (m) => byId.has(m) ? `<span class="gid">${m}</span>` : m);
+}
+
+async function detectApi() {
+  for (const base of ENDPOINTS) {
+    try {
+      const r = await fetch(base + '/health', {method:'GET'});
+      if (r.ok) { api = base; return await r.json(); }
+    } catch (e) { /* эндпоинта нет — это нормальный режим */ }
+  }
+  return null;
+}
+
+async function askAssistant(q) {
+  if (!q.trim() || !api) return;
+  chatMsg('me', linkGids(q));
+  document.getElementById('chatq').value = '';
+  const btn = document.querySelector('#chatform button');
+  btn.disabled = true;
+  try {
+    const r = await fetch(api + '/ask', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({question: q}),
+    });
+    const j = await r.json();
+    if (j.error) { chatMsg('ai', 'Ошибка: ' + j.error); return; }
+    const notes = (j.warnings || []).map(w => `<span class="note">! ${w}</span>`).join('');
+    const tools = j.tools_used?.length ? `<span class="note">инструменты: ${j.tools_used.join(', ')}</span>` : '';
+    chatMsg('ai', linkGids(j.answer) + tools + notes);
+  } catch (e) {
+    chatMsg('ai', 'Не удалось получить ответ: ' + e);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+document.getElementById('chatform').onsubmit = e => {
+  e.preventDefault();
+  askAssistant(document.getElementById('chatq').value);
+};
+
+// Deep link на вкладку и на готовый вопрос: удобно репетировать демо.
+function chatFromHash() {
+  const m = location.hash.match(/[#&]ask=([^&]+)/);
+  return m ? decodeURIComponent(m[1]) : null;
+}
+if (/[#&]tab=chat/.test(location.hash) || chatFromHash()) setPane('chat');
+
+detectApi().then(info => {
+  const pane = document.getElementById('chatlog');
+  const sug = document.getElementById('suggest');
+  if (!info) {
+    document.getElementById('chatform').style.display = 'none';
+    pane.innerHTML = `<p class="hint">Ассистент недоступен: схема и поиск работают без него.<br><br>
+      Чтобы задавать вопросы по сети на естественном языке, запустите
+      <code>moneygraph-serve</code> и обновите страницу.</p>`;
+    return;
+  }
+  const mode = info.llm ? `LLM (${info.model})` : 'детерминированный режим';
+  pane.innerHTML = `<p class="hint">Ассистент подключён, ${mode}.
+    Номера счетов в ответах кликабельны — открывают узел на схеме.</p>`;
+  SUGGESTIONS.forEach(q => {
+    const b = document.createElement('button');
+    b.textContent = q;
+    b.onclick = () => askAssistant(selected ? q.replace('этому узлу', selected)
+      .replace('этот узел', selected) : q);
+    sug.appendChild(b);
+  });
+  const preset = chatFromHash();
+  if (preset) { setPane('chat'); askAssistant(preset); }
+});
 
 // Deep link для демо: viewer.html#gid=100000003684369100 открывает нужный узел сразу.
 function fromHash() {

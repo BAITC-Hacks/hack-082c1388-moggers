@@ -18,6 +18,7 @@ assistant = ["openai>=1.54"]
 [project.scripts]
 moneygraph = "moneygraph.pipeline:main"
 moneygraph-ask = "moneygraph.cli:main"
+moneygraph-serve = "moneygraph.serve:main"
 
 [build-system]
 requires = ["hatchling"]
