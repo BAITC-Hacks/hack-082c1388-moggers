@@ -62,6 +62,11 @@ def run(data_dir: Path, out_dir: Path, seed: int = 42, quiet: bool = False) -> d
         # +0.0 сводит -0.0 к 0.0: иначе знаковый ноль даёт расхождение в CSV.
         f[col] = f[col].round(digits) + 0.0
 
+    # Округляем остальные float один раз: шум scipy иначе делает parquet
+    # и HTML разными при каждом прогоне.
+    for col in f.select_dtypes("float").columns:
+        f[col] = f[col].round(8) + 0.0
+
     out_dir.mkdir(parents=True, exist_ok=True)
     # Вторичный ключ gid делает порядок строк устойчивым при равных приоритетах.
     nodes_roles = (f[EXPORT_COLUMNS]
@@ -76,9 +81,9 @@ def run(data_dir: Path, out_dir: Path, seed: int = 42, quiet: bool = False) -> d
     res = structure.resilience(g, ranked_gids, ds.seeds)
     res.to_csv(out_dir / "resilience.csv", index=False)
     viewer.build(f, ds.edges, out_dir / "viewer.html", res)
+    f.to_parquet(out_dir / "features.parquet", index=False)  # для интерфейса
     log(f"Устойчивость: изъятие топ-10 отрезает "
         f"{(1 - res.loc[res.removed_top_n == 10, 'reachable_share'].iloc[0]):.0%} узлов от seed")
-    f.to_parquet(out_dir / "features.parquet", index=False)  # для интерфейса
 
     elapsed = time.perf_counter() - t0
     summary = {
