@@ -4,8 +4,11 @@
 run:
 	./run.sh
 
+# Тесты запускаются в том же .venv, который создаёт run.sh.
 test:
-	PYTHONPATH=src python3 -m pytest -q
+	@test -x .venv/bin/python || ./run.sh >/dev/null
+	.venv/bin/python -m pip install -q pytest
+	PYTHONPATH=src .venv/bin/python -m pytest -q
 
 clean:
 	rm -rf out
