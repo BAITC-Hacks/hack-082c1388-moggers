@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from . import clusters, features, graph, loading, priority, roles
+from . import clusters, features, graph, loading, priority, roles, viewer
 from .config import ROLES
 
 # Округление экспорта: многопоточный scipy даёт расхождения на уровне 1e-16,
@@ -69,6 +69,7 @@ def run(data_dir: Path, out_dir: Path, seed: int = 42, quiet: bool = False) -> d
     clusters.summarize(f, ds.edges).to_csv(out_dir / "clusters.csv", index=False)
     priority.top_nodes(f).to_csv(out_dir / "top_nodes.csv", index=False)
     f.to_parquet(out_dir / "features.parquet", index=False)  # для интерфейса
+    viewer.build(f, ds.edges, out_dir / "viewer.html")
 
     elapsed = time.perf_counter() - t0
     summary = {
@@ -80,7 +81,7 @@ def run(data_dir: Path, out_dir: Path, seed: int = 42, quiet: bool = False) -> d
     }
     (out_dir / "summary.json").write_text(
         json.dumps(summary, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
-    log(f"Готово за {elapsed:.1f} с -> {out_dir}/")
+    log(f"Готово за {elapsed:.1f} с -> {out_dir}/  (схема сети: {out_dir}/viewer.html)")
     return summary
 
 
